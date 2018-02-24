@@ -20,4 +20,10 @@ object ModelToServe {
 case class ModelToServe(name: String, description: String,
   modelType: ModelDescriptor.ModelType, model: Array[Byte], dataType: String) {}
 
-case class ServingResult(processed : Boolean, result: Double = .0, duration: Long = 0l)
+
+case class ServingResult(processed : Boolean, actor : String = "", result: Double = .0, duration: Long = 0l)
+
+object ServingResult{
+  val noModel = ServingResult(false)
+  def apply(actor : String, result: Double, duration: Long): ServingResult = new ServingResult(true, actor, result, duration)
+}

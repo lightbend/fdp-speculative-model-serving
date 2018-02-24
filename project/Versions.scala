@@ -14,14 +14,7 @@ object Versions {
   val Curator        = "4.0.0"
 
   val kafkaVersion = "1.0.0"
-  val KafkaScalaVersion = "0.1.2"
 
   val tensorflowVersion = "1.4.0"
   val PMMLVersion = "1.3.10"
-
-  val jettyVersion = "9.4.7.v20170914"
-  val jacksonVersion = "2.8.8"
-  val jerseyVersion = "2.25"
-  val gsonVersion = "2.8.2"
-  val wsrsVersion = "2.0.1"
 }
