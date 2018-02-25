@@ -64,4 +64,60 @@ Here we have introduced the following actors:
 * Data types is a manager of all model serving controllers. It is responsible for creation and management of individual model serving controllers and routing to them model serving data requests.
 * Data type N is an implementation of the model serving controller responsible for coordination of individual model serving and deciding on the result. It uses a set of models for actual model serving.
 
-<<More to come>>
+### ModelServingManager Actor
+This actor is a singleton and provides the entry point into whole actor's system.
+This actor manages 2 other managers:
+* ModelManager actor responsible for lifecycle and invocation of model servers 
+(the exception is SpeculativeModelServing Actor, invoking model servers dirctly)
+* DataManager actor responsible for lifecycle and invocation of speculative model servers.
+It supports all the methods providing by the rest of the actors by forwarding client's requests to
+appropriate executors (ModelManager or DataManager)
+
+### ModelManager Actor
+This actor is also a singleton responsible for lifecycle and and (some of) the invocations of model servers
+Its main methods include
+* Update Model (invoked using `ModelWithDescriptor` message) - this method is both lifecycle 
+(if required model - given `modelID` does not exist, it is created) and execution method - model is forwarded 
+to the appropriate model server
+
+*__Note__ There is currently no support for removing model server actor*
+
+* Get Model Server State (invoked using `GetModelServerState` message) - this method checks whether required 
+model server exists (based on the model ID) and either forward request to it for execution or
+returns empty state
+* Get list of existing model servers (invoked using `GetModels` message -this method returns back the list of existing model servers
+* Convert list of model names into list of model serving actors 
+invoked using `GetModelActors` message) - this method translates a list of modelIDs to the list of corresponding model 
+servers. This is a help method for speculative model server configuration (see below)
+
+*__Note__ If a model server with a given modelID does not exist, it will be created*
+
+### DataManager Actor
+This actor is also a singleton responsible for lifecycle and and the invocations of speculative model servers
+Its main methods include
+*
+
+### SpeculativeModelServing Actor
+
+This actor implements the actual speculative model serving based on the following parameters:
+* List of model servers - list of ActorRefs used for actual model serving
+* Timeout - a time to wait responce from the actual model server (by increasing this you can ensure that all model servers will have chance to deliver result)
+* Decider - a custom class implementing `DeciderTrait`. This class needs to implement a single method
+`decideResult` choosing 1 of the results collected by the speculative model server
+in the given time interval. Different implementations of this class can provide 
+different speculative model processing policies.
+This actor provides the following methods.
+*
+
+There is an instance of this class for every data type supported by the system
+
+### ModelServing Actor
+This actor is a workhorse of the overal implementation and provides 2 main methods:
+* Update Model (invoked using `ModelWithDescriptor` message) - a method responsible for updating curent model used for serving data
+* Process Record (invoked using `ServingRequest` message) - a method responsible for processing a giving data request (using existing model to convert request into responce)
+If there is no model defined, this method returns "not processed"
+
+In addition this actor maintains statistics of the model execution `ModelToServeStats`, which can be 
+requested using `GetModelServerState` message
+
+There is an instance of this class for every model supported by the system

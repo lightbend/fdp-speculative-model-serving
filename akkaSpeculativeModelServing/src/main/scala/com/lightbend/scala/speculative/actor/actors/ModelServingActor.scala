@@ -62,7 +62,7 @@ class ModelServingActor(modelID : String) extends Actor {
           currentState = currentState.map(_.incrementUsage(duration))
           sender() ! ServingResponse(record.GUID, ServingResult(modelID, quality, duration))
 
-        case None =>
+        case _ =>
 //          println("No model available - skipping")
           sender() ! ServingResponse(record.GUID, ServingResult.noModel)
       }

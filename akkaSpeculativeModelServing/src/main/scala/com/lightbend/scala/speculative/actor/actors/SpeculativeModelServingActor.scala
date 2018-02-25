@@ -55,11 +55,10 @@ class SpeculativeModelServingActor(dataType : String, tmout : Long, models : Lis
       Future.sequence(
          modelProcessors.toList.map(ask(_,request).mapTo[ServingResponse]).map(f => f.map(Success(_)).recover({case e => Failure(e)})))
          .map(_.collect{ case Success(x) => x})
-         .map(decider.decideResult(_))
-         .map(res => {
-           val servingResult = res.asInstanceOf[ServingResult]
-           val duration = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)
-           if(servingResult.processed) state = state.incrementUsage(duration, servingResult.actor)
+         .map(decider.decideResult(_)).mapTo[ServingResult]
+         .map(servingResult => {
+           if(servingResult.processed)
+             state = state.incrementUsage(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start), servingResult.actor)
            servingResult
          })
          .pipeTo(zender)
@@ -72,7 +71,7 @@ class SpeculativeModelServingActor(dataType : String, tmout : Long, models : Lis
       modelProcessors ++= configuration.models
       state.updateConfig(askTimeout.duration.length, getModelsNames())
       FilePersistence.saveDataState(dataType, configuration.tmout, configuration.models)
-      sender() ! "Done"
+//      sender() ! "Done"
   }
 
   private def getModelsNames() : List[String] = modelProcessors.toList.map(_.path.name)

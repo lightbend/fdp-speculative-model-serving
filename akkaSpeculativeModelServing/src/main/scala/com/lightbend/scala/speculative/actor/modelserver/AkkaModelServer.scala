@@ -46,7 +46,10 @@ object AkkaModelServer {
     // Create necessary actors
     val models = List("model1", "model2", "model3")
     val modelserver = system.actorOf(ModelServingManager.props)
-    ask(modelserver, SpeculativeServer("wine", 100, models))
+    modelserver ! SpeculativeServer("wine", 100, models)
+    // Stabilize
+    Thread.sleep(5000)
+    println("Starting Kafka readers")
 
     // Model stream processing
     Consumer.atMostOnceSource(modelConsumerSettings, Subscriptions.topics(MODELS_TOPIC))

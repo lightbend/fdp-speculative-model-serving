@@ -28,7 +28,6 @@ class DataManager extends Actor {
         case Some(actor) => actor forward configuration                                                   // Update existing one
         case _ => createDataServer(configuration.datatype, configuration.tmout, configuration.models)     // Create the new one
       }
-      sender() ! "Done"
     // process data record
     case record: WineRecord => getDataServer(record.dataType) match {
       case Some(actor) => actor forward record
