@@ -73,6 +73,10 @@ This actor manages 2 other managers:
 It supports all the methods providing by the rest of the actors by forwarding client's requests to
 appropriate executors (ModelManager or DataManager)
 
+The only method, that is not directly forwarded to the appropriate manager is speculative model server configuration (
+invoked using `SpeculativeServer` message). Because ActorRefs are not exposed externally this method is leveraging a method
+on model manager to convert resired models into ActorRefs before sending them to the Data manager
+
 ### ModelManager Actor
 This actor is also a singleton responsible for lifecycle and and (some of) the invocations of model servers
 Its main methods include
@@ -85,7 +89,7 @@ to the appropriate model server
 * Get Model Server State (invoked using `GetModelServerState` message) - this method checks whether required 
 model server exists (based on the model ID) and either forward request to it for execution or
 returns empty state
-* Get list of existing model servers (invoked using `GetModels` message -this method returns back the list of existing model servers
+* Get list of existing model servers (invoked using `GetModels` message - this method returns back the list of existing model servers
 * Convert list of model names into list of model serving actors 
 invoked using `GetModelActors` message) - this method translates a list of modelIDs to the list of corresponding model 
 servers. This is a help method for speculative model server configuration (see below)
@@ -95,7 +99,16 @@ servers. This is a help method for speculative model server configuration (see b
 ### DataManager Actor
 This actor is also a singleton responsible for lifecycle and and the invocations of speculative model servers
 Its main methods include
-*
+* Configure speculative model server (invoked using `SetSpeculativeServer` message) - this is fire and forget method allowing to configure
+speculative model server. It also serves as lifecycle method - if the server does not exist, it is created.
+Otherwise, configuration is forwarded to the appropriate speculative model server (based on data type)
+
+*__Note__ There is currently no support for removing speculative model server actor*
+* Process data item (invoked using `WineRecord` message in the example, but any record intended for serving can be used here). Unlike 
+in the case with model update, the new speculative model server is not created on the flight (it needs to be specifically
+configured). So this method checks if appropriate speculative model server (based on the data type) exists and either forward request to it
+or returns `Not processed` response
+
 
 ### SpeculativeModelServing Actor
 
@@ -107,7 +120,17 @@ This actor implements the actual speculative model serving based on the followin
 in the given time interval. Different implementations of this class can provide 
 different speculative model processing policies.
 This actor provides the following methods.
-*
+* Configuration (invoked using `SetSpeculativeServer` message) - this method is responsible
+for setting execution parameters (above) on the actor.
+* Serve the model (invoked using `WineRecord` in this example, or any required data type) 
+- this method is invoking a set of model servers (based on configuration) for serving data and then invokes decider class
+to calculate the most appropriate result, return to the original invoker.
+
+In addition this actor maintains statistics of the model execution `SpeculativeExecutionStats`, which can be 
+requested using `GetSpeculativeServerState` message
+
+There is an instance of this class for every data type supported by the system
+
 
 There is an instance of this class for every data type supported by the system
 
