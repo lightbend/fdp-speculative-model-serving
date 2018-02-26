@@ -18,6 +18,8 @@ It is, of course, possible to combine multiple feature, for example, consensus b
 
 Overall architecture for speculative model serving is presented below:
 ![Overall architecture of speculative model serving](images/Speculative%20model%20serving.png)
+
+
 Here incoming data is coming into both - Model serving controller and Model learning. Model Learning component is used for periodic recalculation of models and pushing them into Kafka for update. In the heart of our implementation is Model serving controller responsible for orchestration of execution of individual model servers and deciding on the final model serving result. 
 
 Once replies from all of the individual model servers are received or the wait time expires, model serving controller choses reply (based on defined criteria), the reply is propagated to the stream. Individual model servers process the input data based on the their current model and return results back to the model serving controller. Additionally individual model servers are listening on model queues for their models update. 
