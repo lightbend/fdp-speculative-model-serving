@@ -1,8 +1,8 @@
-package com.lightbend.scala.speculative.actor.actors
+package com.lightbend.scala.speculative.actor.distributed.actors
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{Actor, Props}
+import akka.actor.{Actor, ActorRef, Props}
 import com.lightbend.model.winerecord.WineRecord
 import com.lightbend.scala.modelServer.model.ModelWithDescriptor
 import akka.pattern.ask
@@ -17,14 +17,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class ModelServingManager extends Actor {
 
-  implicit val askTimeout = Timeout(100, TimeUnit.MILLISECONDS)
-
   println(s"Creating Model Serving manager")
+
+  implicit val askTimeout = Timeout(100, TimeUnit.MILLISECONDS)
 
   // Create support actors
   val modelManager = context.actorOf(ModelManager.props, "modelManager")
   val dataManager = context.actorOf(DataManager.props, "dataManager")
-
 
   override def receive = {
     // Model methods
@@ -34,14 +33,15 @@ class ModelServingManager extends Actor {
     case getModels : GetModels => modelManager forward getModels
     // Get state of the model
     case getState: GetModelServerState => modelManager forward getState
+    // Convert model list into list of model servers
+    case getModelServersList : GetModelActors => modelManager forward getModelServersList
 
     // Data methods
     // Configure Data actor
-    case configuration : SpeculativeServer =>
-      val zender = sender()
-      ask(modelManager, GetModelActors(configuration.models)).mapTo[GetModelActorsResult]
-        .map(actors => SetSpeculativeServer(configuration.datatype, configuration.tmout, actors.models.toList))
-        .pipeTo(dataManager)(zender)
+    case configuration : SetSpeculativeServerCollector =>
+       ask(self, GetModelActors(configuration.models)).mapTo[GetModelActorsResult]
+        .map(actors => SetSpeculativeServer(configuration.datatype, configuration.tmout, configuration.models, actors.models.toList))
+        .pipeTo(dataManager)
 
     // process data
     case record: WineRecord => dataManager forward record
@@ -55,5 +55,3 @@ class ModelServingManager extends Actor {
 object ModelServingManager{
   def props : Props = Props(new ModelServingManager())
 }
-
-case class SpeculativeServer(datatype : String, tmout : Long, models : List[String])

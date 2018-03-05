@@ -1,4 +1,4 @@
-package com.lightbend.scala.speculative.actor.actors
+package com.lightbend.scala.speculative.actor.distributed.actors
 
 import akka.actor.{Actor, ActorRef, Props}
 import com.lightbend.scala.modelServer.model.{ModelToServeStats, ModelWithDescriptor}
@@ -39,7 +39,7 @@ class ModelManager extends Actor {
     // Get current list of existing models
     case getModels : GetModels => sender() ! getInstances
     // Create actors from names. Support method for data processor configuration
-    case createList : GetModelActors => sender() ! GetModelActorsResult(createList.models.map(getModelServer(_)))
+    case getModelServersList : GetModelActors => sender() ! GetModelActorsResult(getModelServersList.models.map(getModelServer(_)))
   }
 }
 

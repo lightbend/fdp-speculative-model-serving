@@ -36,7 +36,7 @@ class SpeculativeModelServingActor(dataType : String, tmout : Long, models : Lis
 
   override def preStart {
     val state = FilePersistence.restoreDataState(dataType)
-    state._1.foreach(tmout => askTimeout = Timeout(if(tmout <= 0) tmout else  SERVERTIMEOUT, TimeUnit.MILLISECONDS))
+    state._1.foreach(tmout => askTimeout = Timeout(if(tmout > 0) tmout else  SERVERTIMEOUT, TimeUnit.MILLISECONDS))
     state._2.foreach(models => {
       modelProcessors.clear()
       models.foreach(path => context.system.actorSelection(path).resolveOne(ACTORTIMEOUT).onComplete {
@@ -66,12 +66,12 @@ class SpeculativeModelServingActor(dataType : String, tmout : Long, models : Lis
     case request : GetSpeculativeServerState => sender() ! state
     // Configuration update
     case configuration : SetSpeculativeServer =>
-      askTimeout = Timeout(if(configuration.tmout <= 0) configuration.tmout else  SERVERTIMEOUT, TimeUnit.MILLISECONDS)
+      askTimeout = Timeout(if(configuration.tmout > 0) configuration.tmout else  SERVERTIMEOUT, TimeUnit.MILLISECONDS)
       modelProcessors.clear()
       modelProcessors ++= configuration.models
       state.updateConfig(askTimeout.duration.length, getModelsNames())
       FilePersistence.saveDataState(dataType, configuration.tmout, configuration.models)
-//      sender() ! "Done"
+      sender() ! "Done"
   }
 
   private def getModelsNames() : List[String] = modelProcessors.toList.map(_.path.name)

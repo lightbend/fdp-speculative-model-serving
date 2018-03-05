@@ -2,8 +2,8 @@ package com.lightbend.scala.speculative.actor.actors
 
 import akka.actor.{Actor, ActorRef, Props}
 import com.lightbend.model.winerecord.WineRecord
-import com.lightbend.scala.modelServer.model.speculative.{DeciderTrait, SpeculativeExecutionStats}
-import com.lightbend.scala.modelServer.model.{ModelToServeStats, ModelWithDescriptor, ServingResult}
+import com.lightbend.scala.modelServer.model.speculative.SpeculativeExecutionStats
+import com.lightbend.scala.modelServer.model.ServingResult
 
 
 // Router actor, routing both model and data to an appropriate actor
@@ -11,9 +11,11 @@ import com.lightbend.scala.modelServer.model.{ModelToServeStats, ModelWithDescri
 
 class DataManager extends Actor {
 
+  println(s"Creating Data manager")
+
   private def getDataServer(dataType: String): Option[ActorRef] = context.child(dataType)
 
-  private def createDataServer(dataType: String, tmout : Long, models : List[ActorRef]) =
+  private def createDataServer(dataType: String, tmout : Long, models : List[ActorRef]) : ActorRef=
     context.actorOf(SpeculativeModelServingActor.props(dataType, tmout, models), dataType)
 
   private def getInstances : GetDataProcessorsResult =
@@ -25,8 +27,10 @@ class DataManager extends Actor {
     // Configuration update
     case configuration : SetSpeculativeServer =>
       getDataServer(configuration.datatype) match {
-        case Some(actor) => actor forward configuration                                                   // Update existing one
-        case _ => createDataServer(configuration.datatype, configuration.tmout, configuration.models)     // Create the new one
+        case Some(actor) => actor forward configuration                                           // Update existing one
+        case _ =>
+          createDataServer(configuration.datatype, configuration.tmout, configuration.models)     // Create the new one
+          sender() ! "Done"
       }
     // process data record
     case record: WineRecord => getDataServer(record.dataType) match {

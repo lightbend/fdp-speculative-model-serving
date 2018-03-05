@@ -16,15 +16,20 @@ The importance of speculative execution in model serving steams from ability of 
 3. Quality based model serving. Assuming that we have an algorithm allowing to evaluate quality of model serving result, such approach allows to pick result with the best quality.
 It is, of course, possible to combine multiple feature, for example, consensus based serving with the guaranteed execution time, where the result is consensus of the model serving completed within a given time interval.
 
-Overall architecture for speculative model serving is presented below:
-![Overall architecture of speculative model serving](images/Speculative%20model%20serving.png)
-
-
-Here incoming data is coming into both - Model serving controller and Model learning. Model Learning component is used for periodic recalculation of models and pushing them into Kafka for update. In the heart of our implementation is Model serving controller responsible for orchestration of execution of individual model servers and deciding on the final model serving result. 
-
+This project contains 2 implementation:
+1. Single Speculative controller -
+Overall architecture is presented below:
+![speculative model serving](images/Speculative%20model%20serving.png) Here incoming data is coming into both - Model serving controller and Model learning. Model Learning component is used for periodic recalculation of models and pushing them into Kafka for update. In the heart of our implementation is Model serving controller responsible for orchestration of execution of individual model servers and deciding on the final model serving result. 
 Once replies from all of the individual model servers are received or the wait time expires, model serving controller choses reply (based on defined criteria), the reply is propagated to the stream. Individual model servers process the input data based on the their current model and return results back to the model serving controller. Additionally individual model servers are listening on model queues for their models update. 
 
-To improve handshake in our implementation, every model serving controller incoming request is assigned a unique id ([GUID](https://en.wikipedia.org/wiki/Universally_unique_identifier)), which is passed to individual model server and is returned back to the controller along with the serving result. Also, model serving result can be accompanied by a confidence level. This information is optional and, if present, can be used by controller to evaluate result. Additional optional fields can be added to the model server replies for use by results evaluation.
+2. Distributed Speculative controller -
+Overall architecture is presented below:
+![speculative model serving distribured](images/SpeculativeModelServingDistributed.png) Here 
+we have split model service controller into model serving starter/model serving collector pair. This allows to get rid of the synchronous
+invocation of model servers, thus make overall execution more responsive (at the expense of the some extra complexity).
+The rest of components have exactly the same funtionality as on the previous diagram.
+ 
+To improve handshake (really only required for distributed case) in our implementation, every model serving controller incoming request is assigned a unique id ([GUID](https://en.wikipedia.org/wiki/Universally_unique_identifier)), which is passed to individual model server and is returned back to the controller along with the serving result. Also, model serving result can be accompanied by a confidence level. This information is optional and, if present, can be used by controller to evaluate result. Additional optional fields can be added to the model server replies for use by results evaluation.
 With this in place, messages for invoking model server and its reply can be represented as follows (we are using [Protocol Buffers](https://developers.google.com/protocol-buffers/) for encoding messages):
 
 ````
@@ -55,16 +60,22 @@ message ServingQualifier{
 Although there are many different options for implementing this architecture, we will show how to implement it leveraging [Akka streams](https://doc.akka.io/docs/akka/2.5/stream/index.html) 
 [integrated with Actors](https://doc.akka.io/docs/akka/2.5/stream/stream-integrations.html). We will implement individual model servers and model service controller as [Actors](https://doc.akka.io/docs/akka/2.5/actors.html) 
 and use [Akka streams](https://doc.akka.io/docs/akka/2.5/stream/index.html) for overall orchestration of execution and [Akka HTTP](https://doc.akka.io/docs/akka-http/current/index.html) for providing HTTP access to our implementation.
-When creating Akka actors application we need to first design actor’s hierarchy. Following [actor’s design documentation](https://doc.akka.io/docs/akka-http/current/index.html), we decided on the following actors hierarchy
+When creating Akka actors application we need to first design actor’s hierarchy. Following [actor’s design documentation](https://doc.akka.io/docs/akka-http/current/index.html), we decided on the following actors hierarchies:
 
+1. For single speculative controller:
 ![Actor hierarchy for speculative model serving](images/SpeculativeModelServingActors.png)
+2. For distributed speculative controller
+![Actor hierarchy for distributed speculative model serving](images/SpeculativeModelServingActorsDistributed.png)
 
-Here we have introduced the following actors:
+For the case of a single speculative controller we have introduced the following actors:
 * Modelservice Actor is the root of our custom actor’s hierarchy and is responsible for overall management of our application actors and routing messages across the rest of actors. 
 * Models is the manager of all model servers. It is responsible for creation and management of individual model servers and routing to them model updates. 
 * Model N is an implementation of the model server responsible for serving an individual model
 * Data types is a manager of all model serving controllers. It is responsible for creation and management of individual model serving controllers and routing to them model serving data requests.
 * Data type N is an implementation of the model serving controller responsible for coordination of individual model serving and deciding on the result. It uses a set of models for actual model serving.
+
+In the case of distributed speculative controller, instead of Data type N we introduce a pair -
+Data type N starter and Data type N collector
 
 ### ModelServingManager Actor
 This actor is a singleton and provides the entry point into whole actor's system.
@@ -133,6 +144,49 @@ requested using `GetSpeculativeServerState` message
 
 There is an instance of this class for every data type supported by the system
 
+### SpeculativeModelServing Starter/Collector Actors
+In the case of distributed speculative model serving implementation the role of Speculative model serving
+actor is implemented by a pair - starter and collector - actors 
+
+#### SpeculativeModelServing Starter Actors
+
+This actor initializes speculative model serving, based on the following parameters:
+* List of model servers - list of ActorRefs used for actual model serving
+* Collector - ActorRef of his dedicated collector 
+This actor provides the following methods.
+* Configuration (invoked using `SetSpeculativeServerStarter` message) - this method supports
+updating of the list of supporting model servers 
+* Serve the model (invoked using `WineRecord` in this example, or any required data type) 
+- this method generates a unique GUID for this request and send it, along with requester to the collector actor.
+It also forwards incoming request to a set of model servers (based on configuration) for serving data, specifying collector as a destination.
+
+There is an instance of this class for every data type supported by the system
+
+#### SpeculativeModelServing Collector Actors
+This actor implements the actual speculative model serving based on the following parameters:
+* Timeout - a time to wait responce from the actual model server (by increasing this you can ensure that all model servers will have chance to deliver result)
+* Decider - a custom class implementing `DeciderTrait`. This class needs to implement a single method
+`decideResult` choosing 1 of the results collected by the speculative model server
+in the given time interval. Different implementations of this class can provide 
+different speculative model processing policies.
+This actor provides the following methods.
+* Configuration (invoked using `SetSpeculativeServerCollector` message) - this method is responsible
+for setting execution parameters (above) on the actor.
+* Start speculative collection (invoked using `StartSpeculative` message) - this method sets up
+all the structures necessary for collection of the particular request (based on GUID) and
+also sets up timeout (as a self message)
+* Process serving response from a model server (invoked using `ServingResponse` message) - this method
+is invoked every time any of the model servers report the result.
+It checks whether we are still watching responces for a given GUID, and if we do
+it adds a response to an appropriate structure. It then checks whether we have enough
+responses to produce a result, and if we do, uses its decider and sends the responce to the original invoker.
+* Process timer stop (invoked using a `String` message containing GUID) - this method
+is invoked when a time for speculative calculation expires. It first checks whether this GUID
+is completed, and if is, does nothing. If it is still in progress it makes decision based on the results provided so far and sends
+final result to the original requester
+
+In addition this actor maintains statistics of the model execution `SpeculativeExecutionStats`, which can be 
+requested using `GetSpeculativeServerState` message
 
 There is an instance of this class for every data type supported by the system
 

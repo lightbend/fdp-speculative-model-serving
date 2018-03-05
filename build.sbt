@@ -28,7 +28,15 @@ lazy val akkaSpeculativeModelServing = (project in file("./akkaSpeculativeModelS
     ++ Dependencies.modelsDependencies)
   .dependsOn(model, configuration)
 
+lazy val akkaSpeculativeModelServingDistributed = (project in file("./akkaSpeculativeModelServingDistributed"))
+  .settings(dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-core" % "2.9.1",
+    dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.1"
+  )
+  .settings(libraryDependencies ++= Dependencies.kafkabaseDependencies ++ Dependencies.akkaServerDependencies
+    ++ Dependencies.modelsDependencies)
+  .dependsOn(model, configuration)
+
 lazy val configuration = (project in file("./configuration"))
 
 lazy val SpeculativeModelServing = (project in file(".")).
-  aggregate(protobufs, client, model, configuration, akkaSpeculativeModelServing)
+  aggregate(protobufs, client, model, configuration, akkaSpeculativeModelServing, akkaSpeculativeModelServingDistributed)
