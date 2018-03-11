@@ -19,7 +19,7 @@ class DataManager extends Actor {
   private def starterActorName(dataType: String) : String = s"$STARTERPREFIX$dataType"
   private def collectorActorName(dataType: String) : String = s"$COLLECTORPREFIX$dataType"
 
-  private def starterDataType(name: String) : String = name.replace("", STARTERPREFIX)
+  private def starterDataType(name: String) : String = name.replace(STARTERPREFIX, "")
 
   private def getDataServerStarter(dataType: String): Option[ActorRef] = context.child(starterActorName(dataType))
 
