@@ -35,6 +35,7 @@ class SpeculativeModelServingActor(dataType : String, tmout : Long, models : Lis
   var state = SpeculativeExecutionStats(dataType, decider.getClass.getName, askTimeout.duration.length, getModelsNames())
 
   override def preStart {
+    // Restore state from persistence
     val state = FilePersistence.restoreDataState(dataType)
     state._1.foreach(tmout => askTimeout = Timeout(if(tmout > 0) tmout else  SERVERTIMEOUT, TimeUnit.MILLISECONDS))
     state._2.foreach(models => {
@@ -53,14 +54,21 @@ class SpeculativeModelServingActor(dataType : String, tmout : Long, models : Lis
       val zender = sender()
       val start = System.nanoTime()
       Future.sequence(
-         modelProcessors.toList.map(ask(_,request).mapTo[ServingResponse]).map(f => f.map(Success(_)).recover({case e => Failure(e)})))
+        // For every available model
+         modelProcessors.toList.map(
+           // Invoke model serving, map result and lift it to try
+           ask(_,request)(askTimeout).mapTo[ServingResponse]).map(f => f.map(Success(_)).recover({case e => Failure(e)})))
+          // collect all successful serving
          .map(_.collect{ case Success(x) => x})
+          // Invoke decider
          .map(decider.decideResult(_)).mapTo[ServingResult]
+          // Update stats
          .map(servingResult => {
            if(servingResult.processed)
              state = state.incrementUsage(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start), servingResult.actor)
            servingResult
          })
+         // respond
          .pipeTo(zender)
     // Current State request
     case request : GetSpeculativeServerState => sender() ! state

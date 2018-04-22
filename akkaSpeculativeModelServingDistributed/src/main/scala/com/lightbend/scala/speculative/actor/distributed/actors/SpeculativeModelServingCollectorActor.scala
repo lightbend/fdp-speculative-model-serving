@@ -42,14 +42,15 @@ class SpeculativeModelServingCollectorActor(dataType : String, tmout : Long, mod
   override def receive = {
     // Start speculative requesr
     case start : StartSpeculative =>
-//      println(s"Starting speculation ${start.GUID}")
+      // Set up the state
       currentProcessing += (start.GUID -> CurrentProcessing(start.models, start.start, start.reply, new ListBuffer[ServingResponse]())) // Add to watch list
+      // Schedule timeout
       context.system.scheduler.scheduleOnce(timeout, self, start.GUID)
     // Result of indivirual model serving
     case servingResponse : ServingResponse =>
-//      println(s"Get response ${servingResponse.GUID}, result ${servingResponse.result}")
       currentProcessing.contains(servingResponse.GUID) match {
       case true =>
+        // We are still waiting for this GUID
         val processingResults = currentProcessing(servingResponse.GUID)
         val current = CurrentProcessing(processingResults.models, processingResults.start, processingResults.reply, processingResults.results += servingResponse)
         current.results.size match {
@@ -60,7 +61,6 @@ class SpeculativeModelServingCollectorActor(dataType : String, tmout : Long, mod
     }
     // Speculative execution completion
     case stop : String =>
-//      println(s"Stopping speculation $stop")
       currentProcessing.contains(stop) match {
       case true => processResult(stop, currentProcessing(stop))
       case _ => // Its already done
