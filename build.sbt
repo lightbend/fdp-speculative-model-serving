@@ -21,19 +21,19 @@ lazy val model = (project in file("./model"))
   .dependsOn(protobufs)
 
 lazy val akkaSpeculativeModelServing = (project in file("./akkaSpeculativeModelServing"))
-  .settings(dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-core" % "2.9.1",
+  .settings(
+    dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-core" % "2.9.1",
     dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.1"
   )
-  .settings(libraryDependencies ++= Dependencies.kafkabaseDependencies ++ Dependencies.akkaServerDependencies
-    ++ Dependencies.modelsDependencies)
+  .settings(libraryDependencies ++= Dependencies.kafkabaseDependencies ++ Dependencies.akkaServerDependencies)
   .dependsOn(model, configuration)
 
 lazy val akkaSpeculativeModelServingDistributed = (project in file("./akkaSpeculativeModelServingDistributed"))
-  .settings(dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-core" % "2.9.1",
+  .settings(
+    dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-core" % "2.9.1",
     dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.1"
   )
-  .settings(libraryDependencies ++= Dependencies.kafkabaseDependencies ++ Dependencies.akkaServerDependencies
-    ++ Dependencies.modelsDependencies)
+  .settings(libraryDependencies ++= Dependencies.kafkabaseDependencies ++ Dependencies.akkaServerDependencies)
   .dependsOn(model, configuration)
 
 lazy val configuration = (project in file("./configuration"))
