@@ -7,6 +7,7 @@ import com.lightbend.akka.speculative.distributed.persistence.FilePersistence
 import com.lightbend.akka.speculative.distributed.processor.SimpleDesider
 import com.lightbend.modelServer.model.ServingResult
 import com.lightbend.modelServer.model.speculative.{ServingResponse, SpeculativeExecutionStats}
+import com.lightbend.speculative.speculativedescriptor.SpeculativeDescriptor
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -67,12 +68,12 @@ class SpeculativeModelServingCollectorActor(dataType : String, tmout : Long, mod
     // Current State request
     case request : GetSpeculativeServerState => sender() ! state
     // Configuration update
-    case configuration : SetSpeculativeServerCollector =>
+    case configuration : SpeculativeDescriptor =>
       timeout = new FiniteDuration(if(tmout > 0) tmout else  SERVERTIMEOUT, TimeUnit.MILLISECONDS)
       modelProcessors.clear()
       modelProcessors ++= configuration.models
       state.updateConfig(tmout, models)
-      FilePersistence.saveDataState(dataType, configuration.tmout, configuration.models)
+      FilePersistence.saveDataState(dataType, configuration.tmout, configuration.models.toList)
       sender() ! "Done"
   }
 
@@ -96,5 +97,3 @@ case class StartSpeculative(GUID : String, start : Long, reply: ActorRef, models
 case class CurrentProcessing(models : Int, start : Long, reply: ActorRef, results : ListBuffer[ServingResponse])
 
 case class GetSpeculativeServerState(dataType : String)
-
-case class SetSpeculativeServerCollector(datatype : String, tmout : Long, models : List[String])

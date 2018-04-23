@@ -1,8 +1,9 @@
 package com.lightbend.modelServer.model.speculative
 
 import com.lightbend.modelServer.model.ServingResult
+import com.lightbend.speculative.speculativedescriptor.SpeculativeDescriptor
 
-import scala.util.Random
+import scala.util.{Random, Try}
 
 // Because we are doing everything in memory, we implement local equivalent to protobufs
 
@@ -19,5 +20,11 @@ object ServingResponse{
 
   def apply(GUID: String,  result: ServingResult): ServingResponse = {
     new ServingResponse(GUID, result, Some(gen.nextDouble()), qualifiers)
+  }
+}
+
+object SpeculativeConverter {
+  def fromByteArray(message: Array[Byte]): Try[SpeculativeDescriptor] = Try {
+    SpeculativeDescriptor.parseFrom(message)
   }
 }

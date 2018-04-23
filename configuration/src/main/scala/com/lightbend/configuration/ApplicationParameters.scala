@@ -9,7 +9,9 @@ object ApplicationParameters {
 
   val DATA_TOPIC = "mdata"
   val MODELS_TOPIC = "models"
+  val SPECULATIVE_TOPIC = "speculative"
 
   val DATA_GROUP = "wineRecordsGroup"
   val MODELS_GROUP = "modelRecordsGroup"
+  val SPECULATIVE_GROUP = "speculativeRecordsGroup"
 }

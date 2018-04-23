@@ -9,10 +9,12 @@ import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import akka.util.Timeout
-import com.lightbend.akka.speculative.actors.{ModelServingManager, SpeculativeServer}
+import com.lightbend.akka.speculative.actors.ModelServingManager
 import com.lightbend.akka.speculative.queryablestate.QueriesAkkaHttpResource
 import com.lightbend.configuration.ApplicationParameters._
+import com.lightbend.modelServer.model.speculative.SpeculativeConverter
 import com.lightbend.modelServer.model.{DataRecord, ModelToServe, ModelWithDescriptor, ServingResult}
+import com.lightbend.speculative.speculativedescriptor.SpeculativeDescriptor
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 
@@ -41,18 +43,29 @@ object AkkaModelServer {
     .withGroupId(MODELS_GROUP)
     .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
 
+  val speculativeConsumerSettings = ConsumerSettings(system, new ByteArrayDeserializer, new ByteArrayDeserializer)
+    .withBootstrapServers(KAFKA_BROKER)
+    .withGroupId(SPECULATIVE_GROUP)
+    .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+
   def main(args: Array[String]): Unit = {
 
     // Create necessary actors
     val models = List("model1", "model2", "model3")
     val modelserver = system.actorOf(ModelServingManager.props)
-    ask(modelserver, SpeculativeServer("wine", 100, models)).onComplete{
+    ask(modelserver, SpeculativeDescriptor("wine", 100, models)).onComplete{
       case Success(r) => println("Data Server initialized")
       case _ =>
     }
     // Stabilize
     Thread.sleep(500)
     println("Starting Kafka readers")
+
+    // Speculative stream processing
+    Consumer.atMostOnceSource(speculativeConsumerSettings, Subscriptions.topics(SPECULATIVE_TOPIC))
+      .map(record => SpeculativeConverter.fromByteArray(record.value)).collect { case Success(a) => a }
+      .mapAsync(1)(elem => modelserver ? elem)
+      .runWith(Sink.ignore) // run the stream, we do not read the results directly
 
     // Model stream processing
     Consumer.atMostOnceSource(modelConsumerSettings, Subscriptions.topics(MODELS_TOPIC))

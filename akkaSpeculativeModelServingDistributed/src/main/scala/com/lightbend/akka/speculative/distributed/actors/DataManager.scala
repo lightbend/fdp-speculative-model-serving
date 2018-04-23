@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorRef, Props}
 import com.lightbend.model.winerecord.WineRecord
 import com.lightbend.modelServer.model.ServingResult
 import com.lightbend.modelServer.model.speculative.SpeculativeExecutionStats
+import com.lightbend.speculative.speculativedescriptor.SpeculativeDescriptor
 
 
 // Router actor, routing both model and data to an appropriate actor
@@ -41,7 +42,7 @@ class DataManager extends Actor {
       getDataServerStarter(configuration.datatype) match {
         case Some(starter) => // Update existing
           getDataServerCollector(configuration.datatype).get forward
-            SetSpeculativeServerCollector(configuration.datatype, configuration.tmout, configuration.models)
+            SpeculativeDescriptor(configuration.datatype, configuration.tmout, configuration.models)
           starter forward SetSpeculativeServerStarter(configuration.datatype, configuration.servers)
         case _ => // Create the new ones
           createDataServers(configuration.datatype, configuration.tmout, configuration.models, configuration.servers)

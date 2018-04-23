@@ -7,6 +7,7 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import com.lightbend.model.winerecord.WineRecord
 import com.lightbend.modelServer.model.ModelWithDescriptor
+import com.lightbend.speculative.speculativedescriptor.SpeculativeDescriptor
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -37,9 +38,9 @@ class ModelServingManager extends Actor {
 
     // Data methods
     // Configure Data actor
-    case configuration : SetSpeculativeServerCollector =>
+    case configuration : SpeculativeDescriptor =>
        ask(self, GetModelActors(configuration.models)).mapTo[GetModelActorsResult]
-        .map(actors => SetSpeculativeServer(configuration.datatype, configuration.tmout, configuration.models, actors.models.toList))
+        .map(actors => SetSpeculativeServer(configuration.datatype, configuration.tmout, configuration.models.toList, actors.models.toList))
         .pipeTo(dataManager)
 
     // process data
