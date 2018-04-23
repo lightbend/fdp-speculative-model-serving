@@ -10,10 +10,10 @@ object Versions {
   val akkaHttpVersion = "10.1.0"
   val akkaHttpJsonVersion = "1.20.0"
 
-
   val Curator        = "4.0.0"
 
   val kafkaVersion = "1.0.0"
+  val KafkaScalaVersion = "0.2.1"
 
   val tensorflowVersion = "1.4.0"
   val PMMLVersion = "1.3.10"
