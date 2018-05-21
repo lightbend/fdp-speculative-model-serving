@@ -23,7 +23,7 @@ class ModelManager extends Actor {
     GetModelsResult(context.children.map(_.path.name).toSeq)
 
   override def receive = {
-    // Redirect to model update. his only works for the local (in memory) invocation, because ModelWithDescriptor is not serializable
+    // Redirect to model update. This only works for the local (in memory) invocation, because ModelWithDescriptor is not serializable
     case model: ModelWithDescriptor =>
       // This is just for testing
       val models = getInstances.models
