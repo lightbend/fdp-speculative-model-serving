@@ -17,7 +17,7 @@ class ModelServingActor(modelID : String) extends Actor {
   println(s"Creating model serving actor $modelID")
   private var currentModel: Option[Model] = None
   private var newModel: Option[Model] = None
-  var currentState: Option[ModelToServeStats] = None
+  private var currentState: Option[ModelToServeStats] = None
   private var newState: Option[ModelToServeStats] = None
   // For testing
   private val gen = new Random()

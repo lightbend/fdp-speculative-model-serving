@@ -12,7 +12,6 @@ import com.lightbend.model.winerecord.WineRecord
 import com.lightbend.modelServer.model.speculative.ServingRequest
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Success
 
 // Speculative model server manager for a given data type
@@ -25,7 +24,8 @@ class SpeculativeModelServingStarterActor(dataType : String,  models : List[Acto
 
   private val modelProcessors = models.to[ListBuffer]
 
-  override def preStart {
+  override def preStart : Unit = {
+    implicit val ec = context.dispatcher
     val state = FilePersistence.restoreDataState(dataType)
     state._2 match {
       case Some(models) =>

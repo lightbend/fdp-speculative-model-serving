@@ -1,4 +1,4 @@
-package com.lightbend.akka.speculative.actors
+package com.lightbend.akka.speculative.distributed.actors
 
 import java.util.concurrent.ThreadLocalRandom
 
@@ -23,7 +23,7 @@ class ModelManager extends Actor {
     GetModelsResult(context.children.map(_.path.name).toSeq)
 
   override def receive = {
-    // Redirect to model update. This only works for the local (in memory) invocation, because ModelWithDescriptor is not serializable
+    // Redirect to model update. his only works for the local (in memory) invocation, because ModelWithDescriptor is not serializable
     case model: ModelWithDescriptor =>
       // This is just for testing
       val models = getInstances.models
@@ -39,7 +39,7 @@ class ModelManager extends Actor {
     // Get current list of existing models
     case getModels : GetModels => sender() ! getInstances
     // Create actors from names. Support method for data processor configuration
-    case createList : GetModelActors => sender() ! GetModelActorsResult(createList.models.map(getModelServer(_)))
+    case getModelServersList : GetModelActors => sender() ! GetModelActorsResult(getModelServersList.models.map(getModelServer(_)))
   }
 }
 

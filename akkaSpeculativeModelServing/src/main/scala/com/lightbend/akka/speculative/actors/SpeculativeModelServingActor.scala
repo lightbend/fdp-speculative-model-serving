@@ -13,7 +13,6 @@ import com.lightbend.modelServer.model.ServingResult
 import com.lightbend.modelServer.model.speculative.{ServingRequest, ServingResponse, SpeculativeExecutionStats}
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
@@ -24,6 +23,7 @@ class SpeculativeModelServingActor(dataType : String, tmout : Long, models : Lis
 
   val ACTORTIMEOUT = new FiniteDuration(100, TimeUnit.MILLISECONDS)
   val SERVERTIMEOUT = 100l
+  implicit val ec = context.dispatcher
 
   println(s"Creating speculative model serving actor $dataType")
   private val modelProcessors = models.to[ListBuffer]
@@ -32,7 +32,7 @@ class SpeculativeModelServingActor(dataType : String, tmout : Long, models : Lis
 
   var state = SpeculativeExecutionStats(dataType, decider.getClass.getName, askTimeout.duration.length, getModelsNames())
 
-  override def preStart {
+  override def preStart() : Unit = {
     // Restore state from persistence
     val state = FilePersistence.restoreDataState(dataType)
     state._1.foreach(tmout => askTimeout = Timeout(if(tmout > 0) tmout else  SERVERTIMEOUT, TimeUnit.MILLISECONDS))
@@ -49,7 +49,7 @@ class SpeculativeModelServingActor(dataType : String, tmout : Long, models : Lis
     // Model serving request
     case record : WineRecord =>
       val request = ServingRequest(UUID.randomUUID().toString, record)
-      val zender = sender()
+      val replyTo = sender()
       val start = System.nanoTime()
       Future.sequence(
         // For every available model
@@ -67,7 +67,7 @@ class SpeculativeModelServingActor(dataType : String, tmout : Long, models : Lis
            servingResult
          })
          // respond
-         .pipeTo(zender)
+         .pipeTo(replyTo)
     // Current State request
     case request : GetSpeculativeServerState => sender() ! state
     // Configuration update

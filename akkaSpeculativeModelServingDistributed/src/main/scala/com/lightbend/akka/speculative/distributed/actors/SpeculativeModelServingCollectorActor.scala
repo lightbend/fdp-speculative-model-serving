@@ -10,7 +10,6 @@ import com.lightbend.modelServer.model.speculative.{ServingResponse, Speculative
 import com.lightbend.speculative.speculativedescriptor.SpeculativeDescriptor
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 // Speculative model server manager for a given data type
@@ -30,7 +29,7 @@ class SpeculativeModelServingCollectorActor(dataType : String, tmout : Long, mod
 
   val currentProcessing = collection.mutable.Map[String, CurrentProcessing]()
 
-  override def preStart {
+  override def preStart : Unit = {
     val state = FilePersistence.restoreDataState(dataType)
     state._1.foreach(tmout => new FiniteDuration(if(tmout > 0) tmout else  SERVERTIMEOUT, TimeUnit.MILLISECONDS))
     state._2.foreach(models => {
@@ -43,21 +42,21 @@ class SpeculativeModelServingCollectorActor(dataType : String, tmout : Long, mod
     // Start speculative requesr
     case start : StartSpeculative =>
       // Set up the state
+      implicit val ec = context.dispatcher
       currentProcessing += (start.GUID -> CurrentProcessing(start.models, start.start, start.reply, new ListBuffer[ServingResponse]())) // Add to watch list
       // Schedule timeout
       context.system.scheduler.scheduleOnce(timeout, self, start.GUID)
     // Result of indivirual model serving
     case servingResponse : ServingResponse =>
-      currentProcessing.contains(servingResponse.GUID) match {
-      case true =>
+      currentProcessing.get(servingResponse.GUID) match {
+      case Some(processingResults) =>
         // We are still waiting for this GUID
-        val processingResults = currentProcessing(servingResponse.GUID)
         val current = CurrentProcessing(processingResults.models, processingResults.start, processingResults.reply, processingResults.results += servingResponse)
         current.results.size match {
           case size if (size >= current.models) => processResult(servingResponse.GUID, current)  // We are done
           case _ => currentProcessing += (servingResponse.GUID -> current)                       // Keep going
         }
-      case _ => // should never happen
+      case _ => // Timed out
     }
     // Speculative execution completion
     case stop : String =>
