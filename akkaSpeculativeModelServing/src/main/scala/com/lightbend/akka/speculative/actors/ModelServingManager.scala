@@ -38,10 +38,9 @@ class ModelServingManager extends Actor {
     // Data methods
     // Configure Data actor
     case configuration : SpeculativeDescriptor =>
-      val replyTo = sender()
       ask(modelManager, GetModelActors(configuration.models)).mapTo[GetModelActorsResult]
         .map(actors => SetSpeculativeServer(configuration.datatype, configuration.tmout, actors.models.toList))
-        .pipeTo(dataManager)(replyTo)
+        .pipeTo(dataManager)(sender())
 
     // process data
     case record: WineRecord => dataManager forward record
