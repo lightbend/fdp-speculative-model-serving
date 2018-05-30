@@ -1,9 +1,9 @@
 package com.lightbend.akka.speculative.processor
 
 import com.lightbend.modelServer.model.ServingResult
-import com.lightbend.modelServer.model.speculative.{DeciderTrait, ServingResponse}
+import com.lightbend.modelServer.model.speculative.{Decider, ServingResponse}
 
-object SimpleDesider extends DeciderTrait {
+object SimpleDesider extends Decider {
 
   // The simplest decider returning the first result
   override def decideResult(results: List[ServingResponse]): Any = {

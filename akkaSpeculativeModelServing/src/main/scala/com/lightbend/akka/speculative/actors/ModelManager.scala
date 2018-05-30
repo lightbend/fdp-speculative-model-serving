@@ -14,7 +14,7 @@ class ModelManager extends Actor {
   println(s"Creating Model manager")
 
   // This is just for testing
-  val gen = ThreadLocalRandom.current()
+  def gen = ThreadLocalRandom.current()
 
   private def getModelServer(modelID: String): ActorRef =
     context.child(modelID).getOrElse(context.actorOf(ModelServingActor.props(modelID), modelID))
