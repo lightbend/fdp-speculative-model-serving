@@ -49,7 +49,6 @@ class SpeculativeModelServingActor(dataType : String, tmout : Long, models : Lis
     // Model serving request
     case record : WineRecord =>
       val request = ServingRequest(UUID.randomUUID().toString, record)
-      val replyTo = sender()
       val start = System.nanoTime()
       Future.sequence(
         // For every available model
@@ -67,7 +66,7 @@ class SpeculativeModelServingActor(dataType : String, tmout : Long, models : Lis
            servingResult
          })
          // respond
-         .pipeTo(replyTo)
+         .pipeTo(sender())
     // Current State request
     case request : GetSpeculativeServerState => sender() ! state
     // Configuration update
