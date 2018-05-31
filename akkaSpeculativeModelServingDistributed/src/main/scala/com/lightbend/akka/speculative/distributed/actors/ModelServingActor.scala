@@ -1,6 +1,6 @@
 package com.lightbend.akka.speculative.distributed.actors
 
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{ThreadLocalRandom, TimeUnit}
 
 import akka.actor.{Actor, Props}
 import com.lightbend.akka.speculative.distributed.persistence.FilePersistence
@@ -8,7 +8,6 @@ import com.lightbend.model.winerecord.WineRecord
 import com.lightbend.modelServer.model.speculative.{ServingRequest, ServingResponse}
 import com.lightbend.modelServer.model.{Model, ModelToServeStats, ModelWithDescriptor, ServingResult}
 
-import scala.util.Random
 
 // Workhorse - doing model serving for a given data type/ modeltype
 
@@ -20,7 +19,7 @@ class ModelServingActor(modelID : String) extends Actor {
   private var currentState: Option[ModelToServeStats] = None
   private var newState: Option[ModelToServeStats] = None
   // For testing
-  private val gen = new Random()
+  def gen = ThreadLocalRandom.current()
 
   override def preStart {
     val state = FilePersistence.restoreModelState(modelID)

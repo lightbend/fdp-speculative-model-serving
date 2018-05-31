@@ -9,8 +9,6 @@ import com.lightbend.model.winerecord.WineRecord
 import com.lightbend.modelServer.model.ModelWithDescriptor
 import com.lightbend.speculative.speculativedescriptor.SpeculativeDescriptor
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
 
 // Router actor, routing both model and data to an appropriate actors
 // Based on http://michalplachta.com/2016/01/23/scalability-using-sharding-from-akka-cluster/
@@ -18,6 +16,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class ModelServingManager extends Actor {
 
   implicit val askTimeout = Timeout(100, TimeUnit.MILLISECONDS)
+  implicit val ec = context.dispatcher
 
   println(s"Creating Model Serving manager")
 
